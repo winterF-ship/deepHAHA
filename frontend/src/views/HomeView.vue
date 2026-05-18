@@ -21,70 +21,83 @@
       </template>
     </el-dialog>
 
-    <!-- Hero -->
+    <!-- Community header -->
     <section class="hero">
-      <div class="hero-glow hero-glow-1"></div>
-      <div class="hero-glow hero-glow-2"></div>
-      <div class="hero-glow hero-glow-3"></div>
       <div class="hero-inner">
-        <div class="hero-badge">社区</div>
-        <h1 class="hero-title">欢迎来到 DeepHaha 论坛</h1>
-        <p class="hero-desc">分享技术见解、发现优质资源、结交志同道合的朋友</p>
-
-        <!-- 社区数据 -->
-        <div class="hero-stats">
-          <div class="stat-item">
-            <span class="stat-value">{{ totalPosts }}</span>
-            <span class="stat-label">帖子</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-value">{{ categories.length }}</span>
-            <span class="stat-label">板块</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-value">{{ myPostsCount }}</span>
-            <span class="stat-label">我的帖子</span>
-          </div>
+        <div class="hero-copy">
+          <div class="hero-badge">DeepHaha 论坛</div>
+          <h1 class="hero-title">今天大家在聊什么？</h1>
+          <p class="hero-desc">技术交流、资源分享、闲聊灌水和公告反馈，都从这里进。</p>
         </div>
 
-        <router-link to="/post/new" v-if="store.isLoggedIn()" class="hero-cta">
-          <span>+</span> 发布新帖
-        </router-link>
-        <router-link to="/register" v-else class="hero-cta">立即加入</router-link>
+        <div class="hero-panel">
+          <router-link to="/post/new" v-if="store.isLoggedIn()" class="hero-cta">
+            <span>+</span> 发布新帖
+          </router-link>
+          <router-link to="/register" v-else class="hero-cta">加入社区</router-link>
+          <div class="hero-stats">
+            <div class="stat-item">
+              <span class="stat-value">{{ totalPosts }}</span>
+              <span class="stat-label">帖子</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">{{ categories.length }}</span>
+              <span class="stat-label">板块</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">{{ myPostsCount }}</span>
+              <span class="stat-label">我的</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- 板块 -->
-    <section class="section">
+    <section class="section board-section">
       <div class="section-head">
-        <h2 class="section-title">探索板块</h2>
+        <div>
+          <h2 class="section-title">板块</h2>
+          <p class="section-sub">先挑个地方看看，最近的帖子会露在这里。</p>
+        </div>
       </div>
       <div class="category-grid">
         <div
-          v-for="cat in categories"
-          :key="cat.id"
+          v-for="board in categorySummaries"
+          :key="board.id"
           class="cat-card"
-          :style="{ '--cat-color': catColor(cat.id), '--cat-soft': catSoft(cat.id) }"
-          @click="$router.push(`/category/${cat.id}`)"
+          :style="{ '--cat-color': catColor(board.id), '--cat-soft': catSoft(board.id) }"
+          @click="$router.push(`/category/${board.id}`)"
         >
-          <div class="cat-icon" :style="{ background: catGradient(cat.id) }">
-            {{ catEmoji(cat.name) }}
+          <div class="cat-icon">
+            {{ catEmoji(board.name) }}
           </div>
           <div class="cat-body">
-            <h3 class="cat-name">{{ cat.name }}</h3>
-            <p class="cat-desc">{{ cat.description }}</p>
+            <div class="cat-topline">
+              <h3 class="cat-name">{{ board.name }}</h3>
+              <span class="cat-count">{{ board.postCount }} 帖</span>
+            </div>
+            <p class="cat-desc">{{ board.description }}</p>
+            <p class="cat-latest">
+              <span>最新</span>
+              {{ board.latestPost ? board.latestPost.title : '暂无最新动态' }}
+            </p>
           </div>
-          <el-icon class="cat-arrow"><ArrowRight /></el-icon>
+          <div class="cat-meta">
+            <span>{{ board.replyCount }} 回复</span>
+            <el-icon class="cat-arrow"><ArrowRight /></el-icon>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- 最新帖子 + 侧边栏 -->
-    <section class="section">
+    <section class="section feed-section">
       <div class="section-head">
-        <h2 class="section-title">最新帖子</h2>
+        <div>
+          <h2 class="section-title">最新帖子</h2>
+          <p class="section-sub">看看刚刚发生的讨论。</p>
+        </div>
       </div>
 
       <div class="content-layout">
@@ -97,30 +110,29 @@
               class="post-card"
               @click="$router.push(`/post/${post.id}`)"
             >
-              <div class="post-card-left">
-                <span class="post-tag" :style="{ color: catColor(post.categoryId), background: catSoft(post.categoryId) }">{{ post.categoryName }}</span>
+              <div class="post-card-main">
                 <h3 class="post-title">{{ post.title }}</h3>
                 <p class="post-excerpt">{{ post.content }}</p>
-              </div>
-              <div class="post-card-right">
-                <div class="post-author">
+                <div class="post-meta-line">
                   <span class="author-avatar-sm" @click.stop="openUserCard(post.authorId)">
                     <img v-if="post.authorAvatar" :src="post.authorAvatar" :alt="post.authorName" />
                     <span v-else>{{ post.authorName?.charAt(0) }}</span>
                   </span>
                   <span class="author-name" @click.stop="openUserCard(post.authorId)">{{ post.authorName }}</span>
                   <span v-if="post.authorDisplayTitle" class="title-badge" :class="titleClass(post.authorRole)">{{ post.authorDisplayTitle }}</span>
+                  <span class="meta-dot">·</span>
+                  <span class="post-tag" :style="{ color: catColor(post.categoryId), background: catSoft(post.categoryId) }">{{ post.categoryName }}</span>
+                  <span class="meta-dot">·</span>
+                  <span class="post-time">{{ formatTime(post.createdAt) }}</span>
+                  <span class="meta-spacer"></span>
+                  <span class="post-stat">{{ post.likeCount }} 点赞</span>
+                  <span class="post-stat">{{ post.replyCount }} 回复</span>
+                  <span class="post-stat">{{ post.viewCount }} 阅读</span>
                 </div>
-                <div class="post-nums">
-                  <span class="num-item">{{ post.likeCount }}<small>点赞</small></span>
-                  <span class="num-item">{{ post.replyCount }}<small>回复</small></span>
-                  <span class="num-item">{{ post.viewCount }}<small>阅读</small></span>
-                </div>
-                <span class="post-time">{{ formatTime(post.createdAt) }}</span>
-                <el-button v-if="canDelete(post)" type="danger" size="small" plain @click.stop="handleDelete(post)" class="home-delete-btn">
-                  <el-icon><Delete /></el-icon>
-                </el-button>
               </div>
+              <el-button v-if="canDelete(post)" type="danger" size="small" plain @click.stop="handleDelete(post)" class="home-delete-btn">
+                <el-icon><Delete /></el-icon>
+              </el-button>
             </div>
           </TransitionGroup>
 
@@ -133,22 +145,33 @@
 
         <!-- 右侧：侧边栏 -->
         <aside class="sidebar">
-          <!-- 公告 -->
+          <!-- 社区提示 -->
           <div class="side-card">
-            <h4 class="side-card-title">📢 论坛公告</h4>
-            <p class="side-card-text">欢迎来到 DeepHaha 论坛！在这里你可以分享技术见解、发现优质资源、结交志同道合的朋友。请遵守社区规范，友善交流。</p>
+            <h4 class="side-card-title">📌 社区提示</h4>
+            <ul class="side-note-list">
+              <li>技术帖写清环境和报错。</li>
+              <li>资源帖补上来源和适用场景。</li>
+              <li>闲聊可以松弛一点，别刷屏。</li>
+            </ul>
           </div>
 
           <!-- 热门板块 -->
           <div class="side-card">
             <h4 class="side-card-title">🔥 热门板块</h4>
-            <div class="side-tags">
+            <div class="side-board-list">
               <router-link
-                v-for="cat in categories"
-                :key="cat.id"
-                :to="`/category/${cat.id}`"
-                class="side-tag"
-              >{{ cat.name }}</router-link>
+                v-for="board in categorySummaries"
+                :key="board.id"
+                :to="`/category/${board.id}`"
+                class="side-board"
+                :style="{ '--cat-color': catColor(board.id) }"
+              >
+                <span class="side-board-main">
+                  <strong>{{ board.name }}</strong>
+                  <small>{{ board.latestPost ? board.latestPost.title : '暂无新帖' }}</small>
+                </span>
+                <span class="side-board-heat">{{ board.postCount + board.replyCount }}</span>
+              </router-link>
             </div>
           </div>
 
@@ -197,17 +220,28 @@ const savingNotice = ref(false)
 const showUserCard = ref(false)
 const cardUser = ref(null)
 
+const categorySummaries = computed(() => {
+  return categories.value.map(cat => {
+    const catPosts = posts.value.filter(post => post.categoryId === cat.id)
+    return {
+      ...cat,
+      postCount: catPosts.length,
+      replyCount: catPosts.reduce((sum, post) => sum + (post.replyCount || 0), 0),
+      latestPost: catPosts[0] || null
+    }
+  })
+})
+
 const catIcons = { '技术讨论': '💻', '资源共享': '📦', '闲聊灌水': '☕', '公告反馈': '📢' }
 // 四个板块各用一个独立色系
 const catColors = [
-  { color: 'var(--c-indigo)', soft: 'var(--c-indigo-soft)', gradient: 'linear-gradient(135deg, #6366f1, #7c3aed)' },
-  { color: 'var(--c-amber)',  soft: 'var(--c-amber-soft)',  gradient: 'linear-gradient(135deg, #f59e0b, #d97706)' },
-  { color: 'var(--c-emerald)', soft: 'var(--c-emerald-soft)', gradient: 'linear-gradient(135deg, #10b981, #059669)' },
-  { color: 'var(--c-rose)',   soft: 'var(--c-rose-soft)',   gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)' },
+  { color: 'var(--c-indigo)', soft: 'var(--c-indigo-soft)' },
+  { color: 'var(--c-amber)',  soft: 'var(--c-amber-soft)' },
+  { color: 'var(--c-emerald)', soft: 'var(--c-emerald-soft)' },
+  { color: 'var(--c-rose)',   soft: 'var(--c-rose-soft)' },
 ]
 
 function catEmoji(name) { return catIcons[name] || '📌' }
-function catGradient(id) { return catColors[(id - 1) % 4].gradient }
 function catColor(id) { return catColors[(id - 1) % 4].color }
 function catSoft(id) { return catColors[(id - 1) % 4].soft }
 
@@ -315,130 +349,142 @@ function formatTime(t) {
 /* ========== Hero ========== */
 .hero {
   position: relative;
-  text-align: center;
-  padding: 48px 20px 40px;
-  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  border-radius: 14px;
   background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-md);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
-.hero-glow {
-  position: absolute; pointer-events: none;
+.hero-inner {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
 }
-.hero-glow-1 {
-  top: -60px; left: 50%; transform: translateX(-50%);
-  width: 500px; height: 180px;
-  background: radial-gradient(ellipse, var(--c-indigo-glow) 0%, transparent 70%);
-}
-.hero-glow-2 {
-  top: 20px; right: -40px;
-  width: 280px; height: 120px;
-  background: radial-gradient(ellipse, var(--c-amber-glow) 0%, transparent 70%);
-}
-.hero-glow-3 {
-  bottom: -20px; left: -60px;
-  width: 260px; height: 130px;
-  background: radial-gradient(ellipse, var(--c-emerald-glow) 0%, transparent 70%);
-}
-.hero-inner { position: relative; z-index: 1; }
+.hero-copy { min-width: 0; }
 .hero-badge {
-  display: inline-block; padding: 4px 16px; border-radius: 20px;
-  background: var(--primary-soft); color: var(--primary);
-  font-size: 12px; font-weight: 650; letter-spacing: 1px; margin-bottom: 16px;
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--primary);
+  font-size: 13px; font-weight: 750; margin-bottom: 5px;
 }
 .hero-title {
-  font-size: 30px; font-weight: 800; color: var(--text);
-  letter-spacing: -0.5px; margin-bottom: 8px;
+  font-size: 22px; font-weight: 800; color: var(--text);
+  letter-spacing: 0; margin-bottom: 5px;
 }
 .hero-desc {
-  font-size: 15px; color: var(--text-secondary); margin-bottom: 28px;
+  font-size: 14px; color: #475569; line-height: 1.55;
+}
+.hero-panel {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  padding-left: 18px; border-left: 1px solid #edf0f4;
 }
 .hero-stats {
-  display: flex; align-items: center; justify-content: center; gap: 0;
-  margin-bottom: 28px;
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px;
+  border: 1px solid #e6ebf2;
+  border-radius: 10px;
+  background: #f8fafc;
 }
-.stat-item { text-align: center; padding: 0 28px; }
+.stat-item {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  min-width: 0; padding: 4px 7px; border-radius: 7px;
+}
+.stat-item + .stat-item { border-left: 1px solid #e8edf3; border-radius: 0; }
 .stat-value {
-  display: block; font-size: 26px; font-weight: 800;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
+  display: inline; font-size: 15px; font-weight: 800; color: #202637;
 }
-.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.stat-divider {
-  width: 1px; height: 32px; background: var(--border); flex-shrink: 0;
-}
+.stat-label { display: inline; font-size: 12px; color: #64748b; margin-top: 0; white-space: nowrap; }
 .hero-cta {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 11px 28px; border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #f43f5e);
-  color: #fff; font-size: 15px; font-weight: 650;
-  box-shadow: 0 4px 18px rgba(99,102,241,0.32);
+  padding: 9px 14px; border-radius: 9px;
+  background: var(--primary);
+  color: #fff; font-size: 14px; font-weight: 700;
+  box-shadow: none;
   transition: all var(--transition);
+  white-space: nowrap;
 }
-.hero-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(99,102,241,0.40); }
+.hero-cta:hover { background: var(--primary-hover); transform: translateY(-1px); }
 .hero-cta span { font-size: 18px; font-weight: 700; }
 
 /* ========== Notice ========== */
 .notice-bar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 18px; margin-bottom: 8px;
-  background: linear-gradient(135deg, #fef3c7, #fef9c3, #fffbeb);
-  border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--radius);
-  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.08);
+  padding: 9px 13px; margin-bottom: 10px;
+  background: #fffaf0;
+  border: 1px solid #f3e3bd; border-radius: 10px;
+  box-shadow: none;
 }
-.notice-content { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-.notice-icon { font-size: 18px; flex-shrink: 0; }
-.notice-text { font-size: 14px; color: #92400e; line-height: 1.5; }
-.notice-edit-btn { flex-shrink: 0; margin-left: 12px; }
+.notice-content { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.notice-icon { font-size: 14px; flex-shrink: 0; opacity: 0.72; }
+.notice-text { font-size: 13px; color: #6f4f16; line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice-edit-btn { flex-shrink: 0; margin-left: 10px; opacity: 0.74; }
+.notice-edit-btn:hover { opacity: 1; }
 
 /* ========== Section ========== */
-.section { margin-top: 36px; }
+.section { margin-top: 24px; }
 .section-head {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 .section-title { font-size: 17px; font-weight: 700; color: var(--text); }
+.section-sub { margin-top: 2px; font-size: 12px; color: #64748b; }
 
 /* ========== Category Cards ========== */
 .category-grid {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
   align-items: stretch;
 }
 .cat-card {
-  background: var(--bg-card); border-radius: var(--radius); padding: 20px;
+  background: var(--bg-card); border-radius: 12px; padding: 13px;
   cursor: pointer; display: flex; align-items: center; gap: 14px;
-  width: 100%; min-width: 0; min-height: 126px;
-  border: 1.5px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
+  width: 100%; min-width: 0; min-height: 112px;
+  border: 1px solid #dbe3ee;
+  border-left: 3px solid var(--cat-color);
+  box-shadow: none;
   transition: all var(--transition);
 }
+.cat-card:nth-child(2n) { background: #fffdfa; }
+.cat-card:nth-child(3n) { background: #fbfffd; }
+.cat-card:nth-child(4n) { background: #fffafb; }
 .cat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px var(--cat-soft), var(--shadow-md);
-  border-color: var(--cat-color);
+  transform: translateY(-1px);
+  background: #fbfcff;
+  border-color: color-mix(in srgb, var(--cat-color) 44%, #dbe3ee);
 }
 .cat-icon {
-  width: 44px; height: 44px; border-radius: 12px;
-  display: grid; place-items: center; font-size: 20px; flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 9px;
+  display: grid; place-items: center; font-size: 16px; flex-shrink: 0;
+  color: var(--cat-color); background: var(--cat-soft);
+  border: 1px solid color-mix(in srgb, var(--cat-color) 18%, transparent);
 }
 .cat-body { flex: 1; min-width: 0; }
-.cat-name { font-size: 15px; font-weight: 650; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cat-desc { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cat-topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
+.cat-name { font-size: 15px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-count { flex-shrink: 0; font-size: 11px; color: #64748b; }
+.cat-desc { font-size: 12px; color: #4f5f72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cat-latest {
+  margin-top: 8px; font-size: 12px; color: #334155;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cat-latest span { color: #64748b; margin-right: 5px; }
+.cat-meta {
+  align-self: stretch; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;
+  flex: 0 0 auto; min-width: 48px; color: #64748b; font-size: 11px;
+}
 .cat-arrow {
-  color: var(--text-muted); font-size: 16px; flex: 0 0 16px;
-  opacity: 0; transform: translateX(-6px); transition: all var(--transition);
+  color: var(--text-muted); font-size: 16px;
+  opacity: 0.48; transform: translateX(-2px); transition: all var(--transition);
 }
 .cat-card:hover .cat-arrow { opacity: 1; transform: translateX(0); color: var(--cat-color); }
 
 /* ========== Layout ========== */
-.content-layout { display: flex; gap: 24px; align-items: flex-start; }
+.content-layout { display: flex; gap: 18px; align-items: flex-start; }
 .content-main { flex: 1; min-width: 0; }
 
 /* ========== Post List ========== */
-.post-list { display: flex; flex-direction: column; gap: 10px; }
+.post-list {
+  display: flex; flex-direction: column; gap: 12px;
+}
 .post-list-motion-enter-active,
 .post-list-motion-leave-active {
   transition: opacity 220ms ease, transform 220ms ease;
@@ -449,83 +495,104 @@ function formatTime(t) {
   transform: translateY(6px);
 }
 .post-card {
-  background: var(--bg-card); border-radius: var(--radius);
-  padding: 18px 22px; cursor: pointer; display: flex; gap: 20px;
-  border: 1.5px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
+  background: var(--bg-card); border-radius: 12px;
+  padding: 16px 18px; cursor: pointer; display: flex; gap: 12px;
+  border: 1px solid #e8edf3;
+  box-shadow: none;
+  transition: background-color var(--transition), border-color var(--transition), transform var(--transition);
 }
 .post-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  border-color: transparent;
+  transform: translateY(-1px);
+  box-shadow: none;
+  background: #fbfcff;
+  border-color: #dbe5f0;
 }
-.post-card-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.post-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .post-tag {
-  font-size: 11px; font-weight: 650; padding: 2px 10px; border-radius: 6px;
-  align-self: flex-start;
+  font-size: 11px; font-weight: 650; padding: 1px 7px; border-radius: 999px;
+  flex-shrink: 0;
+  border: 1px solid rgba(91, 167, 255, 0.14);
 }
 .post-title {
-  font-size: 15px; font-weight: 650; color: var(--text); line-height: 1.4;
+  font-size: 16px; font-weight: 750; color: #172033; line-height: 1.38;
   display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
 }
+.post-card:hover .post-title { color: var(--primary-hover); }
 .post-excerpt {
-  font-size: 13px; color: var(--text-muted); line-height: 1.5;
+  font-size: 13px; color: #5f6f83; line-height: 1.45;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.post-card-right {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
-  flex-shrink: 0; min-width: 90px;
+.post-meta-line {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  color: #64748b; font-size: 12px; line-height: 1.5;
 }
-.post-author { display: flex; align-items: center; gap: 6px; }
+.meta-dot { color: #c4ccd7; }
+.meta-spacer { flex: 1 1 auto; min-width: 12px; }
+.post-stat { color: #475569; white-space: nowrap; }
+.post-stat:nth-last-child(2) { font-weight: 650; color: #334155; }
 .author-avatar-sm {
-  width: 20px; height: 20px; border-radius: 6px;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--primary);
   color: #fff; font-size: 10px; font-weight: 700;
   display: grid; place-items: center; overflow: hidden; flex-shrink: 0;
   cursor: pointer;
 }
-.author-avatar-sm img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.author-name { font-size: 12px; color: var(--text-secondary); font-weight: 500; cursor: pointer; }
+.author-avatar-sm img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+.author-name { font-size: 12px; color: #475569; font-weight: 600; cursor: pointer; }
 .author-name:hover { color: var(--primary); }
 .title-badge {
   max-width: 92px; padding: 1px 6px; border-radius: 5px;
   font-size: 10px; font-weight: 700; line-height: 1.4;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.title-admin { color: #be123c; background: #ffe4ec; border: 1px solid #fecdd3; }
-.title-supervisor { color: #5b21b6; background: #ede9fe; border: 1px solid #ddd6fe; }
-.post-nums { display: flex; gap: 12px; }
-.num-item { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1; }
-.num-item small { display: block; font-size: 10px; color: var(--text-muted); font-weight: 400; margin-top: 1px; }
-.post-time { font-size: 11px; color: var(--text-muted); }
-.home-delete-btn { font-size: 11px; padding: 2px 8px; border-radius: 6px; }
+.title-admin { color: #9f1239; background: #fff1f2; border: 1px solid #fecdd3; }
+.title-supervisor { color: #6f8f00; background: #f4ffd8; border: 1px solid #ddf99a; }
+.post-time { font-size: 12px; color: #64748b; }
+.home-delete-btn { align-self: center; font-size: 11px; padding: 2px 8px; border-radius: 6px; opacity: 0.58; flex-shrink: 0; }
+.home-delete-btn:hover { opacity: 1; }
 
 /* ========== Sidebar ========== */
-.sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; }
+.sidebar { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
 .side-card {
-  background: var(--bg-card); border-radius: var(--radius);
-  padding: 20px; border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-card); border-radius: 12px;
+  padding: 15px; border: 1px solid #e8edf3;
+  box-shadow: none;
 }
 .side-card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
-.side-card-text { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
-.side-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-.side-tag {
-  padding: 5px 14px; border-radius: 8px;
-  font-size: 13px; color: var(--text-secondary); background: var(--bg);
-  border: 1px solid var(--border-light); transition: all var(--transition);
+.side-card-text { font-size: 13px; color: #536173; line-height: 1.58; }
+.side-note-list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.side-note-list li {
+  position: relative; padding-left: 12px;
+  color: #536173; font-size: 13px; line-height: 1.5;
 }
-.side-tag:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
-.side-cta-card { background: linear-gradient(135deg, #f5f3ff, #fffbeb, #ecfdf5); border-color: rgba(99,102,241,0.10); }
+.side-note-list li::before {
+  content: ''; position: absolute; left: 0; top: 0.72em;
+  width: 4px; height: 4px; border-radius: 50%; background: #94a3b8;
+}
+.side-board-list { display: flex; flex-direction: column; gap: 2px; }
+.side-board {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-top: 1px solid #eef2f7;
+}
+.side-board:first-child { border-top: none; padding-top: 0; }
+.side-board:hover strong { color: var(--cat-color); }
+.side-board-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.side-board-main strong { font-size: 13px; color: #243044; transition: color var(--transition); }
+.side-board-main small { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-board-heat {
+  min-width: 28px; padding: 2px 6px; border-radius: 999px;
+  color: var(--cat-color); background: color-mix(in srgb, var(--cat-color) 9%, #fff);
+  font-size: 11px; font-weight: 750; text-align: center;
+}
+.side-cta-card { background: #f8fafc; border-color: #e3e8ef; }
 .side-cta-btn {
-  display: block; text-align: center; padding: 9px 18px; border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  display: block; text-align: center; padding: 8px 14px; border-radius: 9px;
+  background: var(--primary);
   color: #fff; font-size: 13px; font-weight: 650;
-  box-shadow: 0 2px 8px rgba(99,102,241,0.22);
+  box-shadow: none;
   transition: all var(--transition); margin-top: 12px;
 }
-.side-cta-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(99,102,241,0.30); }
+.side-cta-btn:hover { transform: translateY(-1px); background: var(--primary-hover); }
 .side-cta-row { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .side-link { font-size: 12px; color: var(--text-muted); }
 .side-link:hover { color: var(--primary); }
@@ -533,7 +600,7 @@ function formatTime(t) {
 /* ========== Empty ========== */
 .empty-state {
   text-align: center; padding: 40px 20px;
-  background: var(--bg-card); border-radius: var(--radius);
+  background: var(--bg-card); border-radius: 12px;
   border: 1px dashed var(--border);
 }
 .empty-icon { font-size: 40px; margin-bottom: 12px; }
@@ -544,46 +611,46 @@ function formatTime(t) {
 @media (max-width: 768px) {
   .notice-bar { align-items: flex-start; gap: 10px; padding: 12px 14px; }
   .notice-edit-btn { margin-left: 0; }
-  .hero { padding: 36px 16px 32px; border-radius: var(--radius); }
-  .hero-title { font-size: 22px; }
-  .hero-desc { font-size: 13px; margin-bottom: 20px; }
-  .hero-stats {
-    width: min(100%, 320px);
-    margin: 0 auto 22px;
+  .hero { padding: 15px; border-radius: 12px; }
+  .hero-inner { flex-direction: column; align-items: stretch; gap: 14px; }
+  .hero-title { font-size: 20px; }
+  .hero-desc { font-size: 13px; }
+  .hero-panel {
+    padding-left: 0; padding-top: 12px;
+    border-left: none; border-top: 1px solid #edf0f4;
+    justify-content: space-between;
   }
+  .hero-stats { gap: 2px; }
   .stat-item {
-    flex: 1;
-    padding: 0 10px;
+    flex: 0 0 auto;
+    padding: 4px 6px;
   }
-  .stat-value { font-size: 22px; }
-  .stat-divider { height: 24px; }
+  .stat-value { font-size: 14px; }
   .category-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .cat-card { padding: 14px; }
+  .cat-card { padding: 12px; min-height: 120px; align-items: flex-start; }
+  .cat-meta { display: none; }
   .cat-arrow { opacity: 0.5; transform: none; }
   .content-layout { flex-direction: column; }
   .sidebar { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .side-card { padding: 16px; }
+  .side-card { padding: 14px; }
   .side-cta-card { grid-column: 1 / -1; }
-  .post-card { flex-direction: column; padding: 16px; }
-  .post-card-right { flex-direction: row; align-items: center; gap: 14px; width: 100%; }
-  .post-nums { gap: 14px; }
+  .post-card { flex-direction: column; padding: 14px; gap: 12px; }
+  .home-delete-btn { align-self: flex-end; }
   .section-title { font-size: 15px; }
 }
 
 @media (max-width: 520px) {
   .notice-bar { flex-direction: column; }
   .notice-edit-btn { width: 100%; }
-  .hero-stats { max-width: 290px; }
-  .stat-item { padding: 0 8px; }
+  .notice-text { white-space: normal; }
+  .hero-panel { flex-direction: column; align-items: stretch; }
+  .hero-cta { justify-content: center; }
+  .hero-stats { justify-content: center; flex-wrap: wrap; }
   .category-grid { grid-template-columns: 1fr; }
-  .cat-card { min-height: 96px; }
+  .cat-card { min-height: 100px; }
   .sidebar { grid-template-columns: 1fr; }
-  .post-card-right {
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .post-author { width: 100%; }
-  .post-nums { width: 100%; justify-content: space-between; }
+  .post-meta-line { gap: 6px; }
+  .meta-spacer { display: none; }
+  .post-stat { font-size: 11px; }
 }
 </style>

@@ -74,7 +74,7 @@ async function submit() {
 .brand-mark {
   width: 46px; height: 46px; border-radius: 12px;
   display: grid; place-items: center;
-  background: linear-gradient(135deg, #5b6eeb, #8b5cf6);
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA);
   color: #fff; font-size: 22px; font-weight: 800;
   box-shadow: 0 4px 12px rgba(91,110,235,0.30);
 }
@@ -94,7 +94,7 @@ h1 { color: var(--text); font-size: 26px; line-height: 1.2; font-weight: 750; le
 .auth-form :deep(.el-input__prefix) { color: var(--text-muted); margin-right: 8px; }
 .submit-btn {
   width: 100%; height: 48px; border-radius: 10px; font-size: 16px; font-weight: 700;
-  background: linear-gradient(135deg, #5b6eeb, #7c5ce7) !important;
+  background: var(--primary) !important;
   border: none !important; margin-top: 4px;
   box-shadow: 0 4px 14px rgba(91,110,235,0.28);
   transition: all var(--transition);

@@ -116,6 +116,13 @@
         </div>
       </div>
     </div>
+
+    <AvatarCropper
+      v-model="cropperVisible"
+      :file="pendingAvatarFile"
+      @confirm="uploadCroppedAvatar"
+      @cancel="resetAvatarInput"
+    />
   </div>
 </template>
 
@@ -127,6 +134,7 @@ import { ElMessage } from 'element-plus'
 import { getPosts } from '../api/post'
 import { updateProfile, updatePassword, uploadAvatar } from '../api/auth'
 import { useUserStore } from '../stores/user'
+import AvatarCropper from '../components/AvatarCropper.vue'
 
 const route = useRoute()
 const store = useUserStore()
@@ -144,22 +152,42 @@ const pagedPosts = computed(() => {
 // 头像
 const fileInput = ref(null)
 const avatarPreview = ref(store.userInfo?.avatar || '')
+const cropperVisible = ref(false)
+const pendingAvatarFile = ref(null)
 
 function triggerUpload() { fileInput.value?.click() }
 
 async function handleFile(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  if (file.size > 2 * 1024 * 1024) { ElMessage.warning('图片不能超过2MB'); return }
-  if (!file.type.startsWith('image/')) { ElMessage.warning('只支持图片文件'); return }
+  if (file.size > 2 * 1024 * 1024) { ElMessage.warning('图片不能超过2MB'); resetAvatarInput(); return }
+  if (!file.type.startsWith('image/')) { ElMessage.warning('只支持图片文件'); resetAvatarInput(); return }
+  pendingAvatarFile.value = file
+  cropperVisible.value = true
+}
+
+async function uploadCroppedAvatar(file) {
   try {
     const res = await uploadAvatar(file)
-    avatarPreview.value = res.data.avatar
-    store.updateUser(res.data)
+    const avatarUrl = withCacheBust(res.data.avatar)
+    avatarPreview.value = avatarUrl
+    store.updateUser({ ...res.data, avatar: avatarUrl })
     ElMessage.success('头像更新成功')
   } catch (err) {
     // error already handled by interceptor
+  } finally {
+    resetAvatarInput()
   }
+}
+
+function resetAvatarInput() {
+  pendingAvatarFile.value = null
+  if (fileInput.value) fileInput.value.value = ''
+}
+
+function withCacheBust(url) {
+  if (!url) return url
+  return `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`
 }
 
 // 用户名
@@ -268,12 +296,12 @@ function formatDate(t) {
 
 /* Avatar */
 .avatar-wrap {
-  width: 72px; height: 72px; border-radius: 18px; flex-shrink: 0; cursor: pointer;
+  width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0; cursor: pointer;
   position: relative; overflow: hidden;
-  background: linear-gradient(135deg, #5b6eeb, #8b5cf6);
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA);
   box-shadow: 0 4px 14px rgba(91,110,235,0.28);
 }
-.avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 .avatar-placeholder {
   width: 100%; height: 100%; display: grid; place-items: center;
   color: #fff; font-size: 28px; font-weight: 800;
@@ -351,7 +379,7 @@ function formatDate(t) {
   border: none; cursor: pointer; transition: all var(--transition);
 }
 .inline-btn.save {
-  background: linear-gradient(135deg, #5b6eeb, #7c5ce7); color: #fff;
+  background: var(--primary); color: #fff;
   box-shadow: 0 2px 6px rgba(91,110,235,0.22);
 }
 .inline-btn.save:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(91,110,235,0.30); }
@@ -369,7 +397,7 @@ function formatDate(t) {
 .empty-state p { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
 .empty-cta {
   display: inline-block; padding: 8px 22px; border-radius: 10px;
-  background: linear-gradient(135deg, #5b6eeb, #7c5ce7);
+  background: var(--primary);
   color: #fff; font-size: 13px; font-weight: 600;
   box-shadow: 0 4px 12px rgba(91,110,235,0.24);
 }
@@ -381,7 +409,7 @@ function formatDate(t) {
   .page-top { margin-bottom: 18px; }
   .user-card { padding: 20px 16px; }
   .user-card-top { align-items: flex-start; gap: 12px; }
-  .avatar-wrap { width: 56px; height: 56px; border-radius: 14px; }
+  .avatar-wrap { width: 56px; height: 56px; border-radius: 50%; }
   .avatar-placeholder { font-size: 22px; }
   .user-name { font-size: 17px; }
   .user-stat { margin-left: auto; }

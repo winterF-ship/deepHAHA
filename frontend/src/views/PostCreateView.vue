@@ -162,7 +162,7 @@ async function submit() {
 .cancel-btn:hover { border-color: #c0c8d6; color: var(--text); }
 .submit-btn {
   border-radius: 10px; font-weight: 650; padding: 10px 28px;
-  background: linear-gradient(135deg, #5b6eeb, #7c5ce7) !important;
+  background: var(--primary) !important;
   border: none !important; box-shadow: 0 4px 14px rgba(91, 110, 235, 0.28);
   transition: all var(--transition); display: flex; align-items: center; gap: 6px;
 }

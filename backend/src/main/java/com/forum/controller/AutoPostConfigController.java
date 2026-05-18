@@ -1,12 +1,15 @@
 package com.forum.controller;
 
+import com.forum.config.DeepSeekConfig;
 import com.forum.dto.Result;
 import com.forum.entity.User;
 import com.forum.repository.UserRepository;
 import com.forum.service.AiAutoPostService;
+import com.forum.service.BotReplyService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -14,11 +17,31 @@ import java.util.Map;
 public class AutoPostConfigController {
 
     private final AiAutoPostService aiAutoPostService;
+    private final BotReplyService botReplyService;
+    private final DeepSeekConfig deepSeekConfig;
     private final UserRepository userRepository;
 
-    public AutoPostConfigController(AiAutoPostService aiAutoPostService, UserRepository userRepository) {
+    public AutoPostConfigController(AiAutoPostService aiAutoPostService,
+                                    BotReplyService botReplyService,
+                                    DeepSeekConfig deepSeekConfig,
+                                    UserRepository userRepository) {
         this.aiAutoPostService = aiAutoPostService;
+        this.botReplyService = botReplyService;
+        this.deepSeekConfig = deepSeekConfig;
         this.userRepository = userRepository;
+    }
+
+    @GetMapping("/system-status")
+    public Result<Map<String, Object>> getSystemStatus(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (!isAdmin(userId)) {
+            return Result.error(403, "只有管理员才能查看系统状态");
+        }
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("autoPostEnabled", aiAutoPostService.isEnabled());
+        status.put("autoReplyEnabled", botReplyService.isAutoReplyEnabled());
+        status.put("deepseekApiKeySet", deepSeekConfig.getKey() != null && !deepSeekConfig.getKey().isBlank());
+        return Result.success(status);
     }
 
     @GetMapping("/auto-post-config")

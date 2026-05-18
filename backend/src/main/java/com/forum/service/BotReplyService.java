@@ -50,6 +50,8 @@ public class BotReplyService {
     @Value("${ai.auto-reply-bot.enabled:true}")
     private boolean replyBotEnabled;
 
+    public boolean isAutoReplyEnabled() { return enabled; }
+
     @Value("${ai.auto-reply.recent-post-minutes:30}")
     private int recentPostMinutes;
 

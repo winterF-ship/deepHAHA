@@ -9,6 +9,7 @@ const routes = [
   { path: '/post/new', name: 'PostCreate', component: () => import('../views/PostCreateView.vue'), meta: { requiresAuth: true } },
   { path: '/admin/bots', name: 'AdminBots', component: () => import('../views/AdminBotsView.vue'), meta: { requiresAuth: true, requiresModerator: true } },
   { path: '/admin/users', name: 'AdminUsers', component: () => import('../views/AdminUsersView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/admin/config', name: 'AdminConfig', component: () => import('../views/AdminConfigView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/login', name: 'Login', component: () => import('../views/LoginView.vue'), meta: { authPage: true } },
   { path: '/register', name: 'Register', component: () => import('../views/RegisterView.vue'), meta: { authPage: true } },
 ]

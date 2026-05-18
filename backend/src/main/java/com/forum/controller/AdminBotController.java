@@ -118,7 +118,7 @@ public class AdminBotController {
             }
             bot.setUsername(req.getUsername());
         }
-        if (req.getAvatar() != null) {
+        if (req.getAvatar() != null && !req.getAvatar().isBlank()) {
             bot.setAvatar(req.getAvatar());
         }
         if (req.getPersona() != null) {

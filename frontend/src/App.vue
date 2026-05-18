@@ -92,17 +92,22 @@ onMounted(() => {
 
 <style>
 :root {
-  --primary: #6366f1;
-  --primary-light: #818cf8;
-  --primary-soft: rgba(99, 102, 241, 0.08);
-  --primary-glow: rgba(99, 102, 241, 0.16);
-  --bg: #f8fafc;
+  --primary: #5BA7FF;
+  --primary-light: #7DBBFF;
+  --primary-hover: #3B8BEA;
+  --primary-soft: #EEF6FF;
+  --primary-glow: rgba(91, 167, 255, 0.18);
+  --sakura: #FF5FA2;
+  --sakura-soft: #FFF1F7;
+  --accent-lime: #C8FF3D;
+  --accent-lime-soft: #F4FFD8;
+  --bg: #f6f8fb;
   --bg-card: #ffffff;
-  --text: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --border: #e2e8f0;
-  --border-light: #f1f5f9;
+  --text: #202637;
+  --text-secondary: #374151;
+  --text-muted: #8A94A6;
+  --border: #E8ECF2;
+  --border-light: #f1f3f7;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.04), 0 2px 4px rgba(15, 23, 42, 0.03);
@@ -114,10 +119,10 @@ onMounted(() => {
   --mobile-tabbar-height: 64px;
 
   /* Category colors */
-  --c-indigo: #6366f1;   --c-indigo-soft: rgba(99,102,241,0.10);   --c-indigo-glow: rgba(99,102,241,0.18);
-  --c-amber: #f59e0b;    --c-amber-soft: rgba(245,158,11,0.10);    --c-amber-glow: rgba(245,158,11,0.18);
-  --c-emerald: #10b981;  --c-emerald-soft: rgba(16,185,129,0.10);  --c-emerald-glow: rgba(16,185,129,0.18);
-  --c-rose: #f43f5e;     --c-rose-soft: rgba(244,63,94,0.10);      --c-rose-glow: rgba(244,63,94,0.18);
+  --c-indigo: #5BA7FF;   --c-indigo-soft: #EEF6FF;   --c-indigo-glow: rgba(91,167,255,0.14);
+  --c-amber: #f59e0b;    --c-amber-soft: rgba(245,158,11,0.10);    --c-amber-glow: rgba(245,158,11,0.14);
+  --c-emerald: #8fdc18;  --c-emerald-soft: #F4FFD8;  --c-emerald-glow: rgba(200,255,61,0.16);
+  --c-rose: #F56565;     --c-rose-soft: rgba(245,101,101,0.10);      --c-rose-glow: rgba(245,101,101,0.14);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -126,14 +131,26 @@ html, body, #app { min-height: 100%; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
-  background: var(--bg);
+  background:
+    linear-gradient(rgba(91, 167, 255, 0.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(91, 167, 255, 0.010) 1px, transparent 1px),
+    radial-gradient(circle at 16% 0%, rgba(91, 167, 255, 0.030), transparent 28%),
+    linear-gradient(180deg, #F6F7F9 0%, var(--bg) 320px, #f4f6f8 100%);
+  background-size: 28px 28px, 28px 28px, auto, auto;
+  background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#forum-app { min-height: 100vh; }
+#forum-app {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 86% 8%, rgba(200, 255, 61, 0.035), transparent 22%),
+    linear-gradient(rgba(15, 23, 42, 0.018) 1px, transparent 1px);
+  background-size: auto, 100% 36px;
+}
 
 .page-fade-enter-active,
 .page-fade-leave-active {
@@ -186,8 +203,8 @@ a { text-decoration: none; color: inherit; }
 .el-button--primary {
   --el-button-bg-color: var(--primary);
   --el-button-border-color: var(--primary);
-  --el-button-hover-bg-color: var(--primary-light);
-  --el-button-hover-border-color: var(--primary-light);
+  --el-button-hover-bg-color: var(--primary-hover);
+  --el-button-hover-border-color: var(--primary-hover);
   --el-button-active-bg-color: var(--primary);
   --el-button-active-border-color: var(--primary);
 }
@@ -196,9 +213,38 @@ a { text-decoration: none; color: inherit; }
   --el-tag-border-color: transparent;
   --el-tag-text-color: var(--primary);
 }
+.el-button--success,
+.el-tag--success {
+  --el-color-success: #8fdc18;
+  --el-color-success-light-3: #aeea43;
+  --el-color-success-light-5: #c8ff3d;
+  --el-color-success-light-7: #e1ff8f;
+  --el-color-success-light-8: #ecffb8;
+  --el-color-success-light-9: var(--accent-lime-soft);
+  --el-color-success-dark-2: #6f8f00;
+}
+.el-button--danger,
+.el-tag--danger {
+  --el-color-danger: #F56565;
+  --el-color-danger-light-9: rgba(245, 101, 101, 0.10);
+  --el-color-danger-dark-2: #e05252;
+}
 
 /* responsive */
 @media (max-width: 768px) {
+  body {
+    background:
+      linear-gradient(rgba(91, 167, 255, 0.010) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91, 167, 255, 0.008) 1px, transparent 1px),
+      linear-gradient(180deg, #F6F7F9 0%, var(--bg) 260px, #f4f6f8 100%);
+    background-size: 32px 32px, 32px 32px, auto;
+    background-attachment: scroll;
+  }
+
+  #forum-app {
+    background: none;
+  }
+
   .main-content {
     padding: 16px 12px calc(var(--mobile-tabbar-height) + 24px + env(safe-area-inset-bottom));
   }
@@ -267,7 +313,7 @@ a { text-decoration: none; color: inherit; }
 
   .mobile-tab.active {
     color: var(--primary);
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.08));
+    background: linear-gradient(135deg, rgba(91, 167, 255, 0.13), rgba(200, 255, 61, 0.14));
   }
 }
 

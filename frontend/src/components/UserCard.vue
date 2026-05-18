@@ -218,12 +218,12 @@ function syncCurrentUserMuteState(nextState) {
 .dialog-title { font-size: 16px; font-weight: 700; color: var(--text); }
 .user-card-body { text-align: center; }
 .uc-avatar {
-  width: 64px; height: 64px; border-radius: 16px; margin: 0 auto 12px;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 12px;
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA 62%, #C8FF3D);
   color: #fff; font-size: 24px; font-weight: 700;
-  display: grid; place-items: center; overflow: hidden;
+  display: grid; place-items: center; overflow: hidden; flex-shrink: 0;
 }
-.uc-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.uc-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 .uc-name { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
 .uc-info {
   display: flex; justify-content: space-between; padding: 6px 0;
@@ -231,7 +231,7 @@ function syncCurrentUserMuteState(nextState) {
 }
 .uc-label { color: var(--text-muted); }
 .role-admin { color: #f59e0b; font-weight: 600; }
-.role-supervisor { color: #6366f1; font-weight: 600; }
+.role-supervisor { color: #6f8f00; font-weight: 600; }
 .role-user { color: var(--text-secondary); }
 .title-badge {
   max-width: 180px; padding: 2px 8px; border-radius: 6px;
@@ -239,9 +239,9 @@ function syncCurrentUserMuteState(nextState) {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .title-admin { color: #be123c; background: #ffe4ec; border: 1px solid #fecdd3; }
-.title-supervisor { color: #5b21b6; background: #ede9fe; border: 1px solid #ddd6fe; }
+.title-supervisor { color: #6f8f00; background: #f4ffd8; border: 1px solid #ddf99a; }
 .muted-yes { color: #ef4444; font-weight: 600; }
-.muted-no { color: #10b981; }
+.muted-no { color: #7fb600; }
 .uc-actions { margin-top: 16px; display: flex; justify-content: center; gap: 10px; }
 .mute-panel { margin-top: 16px; padding: 14px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border-light); }
 .mute-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
@@ -253,7 +253,7 @@ function syncCurrentUserMuteState(nextState) {
 @media (max-width: 520px) {
   .user-card-dialog :deep(.el-dialog__header) { padding: 18px 18px 0; }
   .user-card-dialog :deep(.el-dialog__body) { padding: 14px 18px 20px; }
-  .uc-avatar { width: 56px; height: 56px; border-radius: 14px; }
+  .uc-avatar { width: 56px; height: 56px; border-radius: 50%; }
   .uc-name { font-size: 16px; }
   .uc-actions { flex-direction: column; }
   .uc-actions :deep(.el-button) { width: 100%; margin-left: 0; }

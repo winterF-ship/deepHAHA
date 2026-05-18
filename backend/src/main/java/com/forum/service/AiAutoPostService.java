@@ -88,24 +88,31 @@ public class AiAutoPostService {
     @Scheduled(fixedRateString = "${ai.auto-post.interval-ms:600000}")
     @Transactional
     public void autoPost() {
+        log.info("AI 自动发帖任务开始扫描: enabled={}, intervalMs={}, categoryIds='{}', userIds='{}', titleLength={}-{}, contentLength={}-{}, apiKeySet={}",
+                isEnabled(), getEffectiveIntervalMs(), getEffectiveCategoryIds(), getEffectiveUserIds(),
+                getEffectiveMinTitleLength(), getEffectiveMaxTitleLength(),
+                getEffectiveMinContentLength(), getEffectiveMaxContentLength(),
+                deepSeekConfig.getKey() != null && !deepSeekConfig.getKey().isBlank());
         if (!isEnabled()) {
-            log.info("AI 自动发帖未开启，跳过");
+            log.info("AI 自动发帖跳过: 总开关关闭(enabled=false)");
             return;
         }
         if (deepSeekConfig.getKey() == null || deepSeekConfig.getKey().isBlank()) {
-            log.warn("DeepSeek API Key 为空，AI 自动发帖跳过");
+            log.warn("AI 自动发帖跳过: DeepSeek API Key 为空");
             return;
         }
 
         List<User> bots = getAvailableBots();
+        log.info("AI 自动发帖可用 AI 角色数量: {}", bots.size());
         if (bots.isEmpty()) {
-            log.info("未配置 AI 发帖用户或没有可用的 AI 用户，跳过");
+            log.info("AI 自动发帖跳过: 没有可用 AI 角色，可能原因=未创建AI角色/AI角色未启用/用户限制过滤/ADMIN角色过滤");
             return;
         }
 
         List<Category> categories = getAvailableCategories();
+        log.info("AI 自动发帖可用板块数量: {}", categories.size());
         if (categories.isEmpty()) {
-            log.info("未配置 AI 发帖分类或没有可用分类，跳过");
+            log.info("AI 自动发帖跳过: 没有可用板块，可能原因=板块表为空/板块限制配置无匹配");
             return;
         }
 
@@ -119,11 +126,15 @@ public class AiAutoPostService {
             String systemPrompt = buildSystemPrompt(bot);
             String userPrompt = buildUserPrompt(bot, category);
 
+            log.info("AI 自动发帖调用 DeepSeek: botId={}, botName={}, categoryId={}, categoryName={}",
+                    bot.getId(), bot.getUsername(), category.getId(), category.getName());
             Result<Map<String, String>> genResult = deepSeekService.generatePostPreview(systemPrompt, userPrompt);
             if (genResult.getCode() != 200 || genResult.getData() == null) {
-                log.info("AI 自动发帖跳过: DeepSeek 生成失败, bot={}, category={}", bot.getUsername(), category.getName());
+                log.info("AI 自动发帖跳过: DeepSeek 生成失败, bot={}, category={}, code={}, message={}",
+                        bot.getUsername(), category.getName(), genResult.getCode(), genResult.getMessage());
                 continue;
             }
+            log.info("AI 自动发帖 DeepSeek 生成成功: bot={}, category={}", bot.getUsername(), category.getName());
 
             String title = genResult.getData().get("title");
             String content = genResult.getData().get("content");
@@ -150,6 +161,7 @@ public class AiAutoPostService {
                 continue;
             }
             if (title.length() > maxTitle) {
+                log.info("AI 自动发帖标题超长，截断处理: 原长度={}, 最大长度={}, bot={}", title.length(), maxTitle, bot.getUsername());
                 title = title.substring(0, maxTitle);
             }
             if (content.length() < minContent) {
@@ -157,6 +169,7 @@ public class AiAutoPostService {
                 continue;
             }
             if (content.length() > maxContent) {
+                log.info("AI 自动发帖正文超长，截断处理: 原长度={}, 最大长度={}, bot={}", content.length(), maxContent, bot.getUsername());
                 content = content.substring(0, maxContent);
             }
 
@@ -175,7 +188,7 @@ public class AiAutoPostService {
                 log.info("AI 自动发帖成功: postId={}, userId={}, botName={}, categoryId={}",
                         postResult.getData().getId(), bot.getId(), bot.getUsername(), category.getId());
             } else {
-                log.warn("AI 自动发帖失败: bot={}, message={}", bot.getUsername(), postResult.getMessage());
+                log.warn("AI 自动发帖失败: bot={}, code={}, message={}", bot.getUsername(), postResult.getCode(), postResult.getMessage());
             }
             return;
         }
@@ -229,10 +242,12 @@ public class AiAutoPostService {
         LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
         long recentPosts = postRepository.countByAuthorIdAndCreatedAtAfter(bot.getId(), oneHourAgo);
         if (recentPosts >= limit) {
-            log.info("AI 自动发帖跳过: bot={} 最近1小时发帖数({})达到限制({})",
-                    bot.getUsername(), recentPosts, limit);
+            log.info("AI 自动发帖跳过: bot={} 命中频率限制, since={}, now={}, recentPosts={}, limitPerHour={}",
+                    bot.getUsername(), oneHourAgo, LocalDateTime.now(), recentPosts, limit);
             return false;
         }
+        log.info("AI 自动发帖频率检查通过: bot={}, since={}, recentPosts={}, limitPerHour={}",
+                bot.getUsername(), oneHourAgo, recentPosts, limit);
         return true;
     }
 
@@ -342,6 +357,7 @@ public class AiAutoPostService {
         map.put("maxContentLength", getEffectiveMaxContentLength());
         map.put("restartRequiredFor", "intervalMs 修改需重启后生效");
         map.put("runtimeChangesLostOnRestart", true);
+        map.put("note", "AI 自动发帖开关、板块、用户和字数限制为运行时配置，下次扫描生效但重启后会丢失；扫描间隔 interval-ms 只读取 application.properties，修改后需重启后端生效。");
         return map;
     }
 

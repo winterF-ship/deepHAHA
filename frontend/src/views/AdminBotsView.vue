@@ -84,7 +84,7 @@
               <el-button size="small" @click="triggerBotAvatar" :disabled="submitting" class="upload-btn">
                 上传头像
               </el-button>
-              <input ref="botAvatarInput" type="file" accept="image/*" style="display:none" @change="handleBotAvatar" />
+              <input id="botAvatarInput" ref="botAvatarInput" type="file" accept="image/*" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0" @change="handleBotAvatar" />
             </div>
             <div class="identity-fields">
               <el-form-item label="用户名" prop="username">
@@ -138,6 +138,13 @@
         </div>
       </template>
     </el-dialog>
+
+    <AvatarCropper
+      v-model="botCropperVisible"
+      :file="pendingBotAvatarFile"
+      @confirm="uploadCroppedBotAvatar"
+      @cancel="resetBotAvatarInput"
+    />
 
     <!-- 生成帖子预览弹窗 -->
     <el-dialog
@@ -245,6 +252,7 @@ import { Loading, Plus } from '@element-plus/icons-vue'
 import { getBots, createBot, updateBot, generatePostPreview, publishBotPost, uploadBotAvatar } from '../api/adminBot'
 import { getCategories } from '../api/category'
 import { ElMessage } from 'element-plus'
+import AvatarCropper from '../components/AvatarCropper.vue'
 
 const router = useRouter()
 
@@ -259,6 +267,8 @@ const submitting = ref(false)
 const formRef = ref(null)
 const botAvatarInput = ref(null)
 const botAvatarPreview = ref('')
+const botCropperVisible = ref(false)
+const pendingBotAvatarFile = ref(null)
 
 const form = reactive({
   username: '',
@@ -303,7 +313,7 @@ function openCreate() {
   isEdit.value = false
   editingId.value = null
   form.username = ''
-  form.avatar = ''
+  form.avatar = undefined
   form.persona = ''
   form.botStyle = ''
   form.botEnabled = 1
@@ -319,7 +329,7 @@ function openEdit(row) {
   isEdit.value = true
   editingId.value = row.id
   form.username = row.username
-  form.avatar = row.avatar || ''
+  form.avatar = row.avatar || undefined
   form.persona = row.persona || ''
   form.botStyle = row.botStyle || ''
   form.botEnabled = row.botEnabled
@@ -369,15 +379,33 @@ function triggerBotAvatar() {
 async function handleBotAvatar(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  if (file.size > 2 * 1024 * 1024) { ElMessage.warning('图片不能超过2MB'); return }
-  if (!file.type.startsWith('image/')) { ElMessage.warning('只支持图片文件'); return }
+  if (file.size > 2 * 1024 * 1024) { ElMessage.warning('图片不能超过2MB'); resetBotAvatarInput(); return }
+  if (!file.type.startsWith('image/')) { ElMessage.warning('只支持图片文件'); resetBotAvatarInput(); return }
+  pendingBotAvatarFile.value = file
+  botCropperVisible.value = true
+}
+
+async function uploadCroppedBotAvatar(file) {
   try {
     const res = await uploadBotAvatar(file)
-    botAvatarPreview.value = res.data.avatar
+    const avatarUrl = withCacheBust(res.data.avatar)
+    botAvatarPreview.value = avatarUrl
     form.avatar = res.data.avatar
   } catch {
     // error handled by interceptor
+  } finally {
+    resetBotAvatarInput()
   }
+}
+
+function resetBotAvatarInput() {
+  pendingBotAvatarFile.value = null
+  if (botAvatarInput.value) botAvatarInput.value.value = ''
+}
+
+function withCacheBust(url) {
+  if (!url) return url
+  return `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`
 }
 
 function openPreview(row) {
@@ -455,11 +483,19 @@ onMounted(() => {
   transition: background-color 200ms ease;
 }
 .bots-table :deep(.el-table__row:hover > td) {
-  background-color: rgba(99, 102, 241, 0.04) !important;
+  background-color: rgba(91, 167, 255, 0.06) !important;
 }
 .bot-avatar {
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA 62%, #C8FF3D);
   color: #fff; font-weight: 700; font-size: 14px;
+  flex-shrink: 0;
+}
+.bot-avatar :deep(img),
+.avatar-preview :deep(img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 .mobile-loading,
 .mobile-bot-list {
@@ -522,10 +558,11 @@ onMounted(() => {
   background: #fff;
 }
 .avatar-preview {
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA 62%, #C8FF3D);
   color: #fff;
   font-size: 22px;
   font-weight: 800;
+  flex-shrink: 0;
 }
 .upload-btn {
   border-radius: 7px;
@@ -673,7 +710,7 @@ onMounted(() => {
   font-size: 14px; color: var(--text-secondary, #334155);
   line-height: 1.8; white-space: pre-wrap; word-break: break-word;
   background: var(--bg-light, #f8fafc); padding: 14px 16px;
-  border-radius: 10px; border-left: 3px solid #10b981;
+  border-radius: 10px; border-left: 3px solid #8fdc18;
 }
 .publish-row {
   margin-top: 16px; display: flex; align-items: center; gap: 10px;
@@ -732,7 +769,7 @@ onMounted(() => {
   }
   .mobile-bot-card:active {
     transform: scale(0.99);
-    border-color: rgba(99, 102, 241, 0.18);
+    border-color: rgba(91, 167, 255, 0.20);
   }
   .mobile-bot-main {
     flex: 1;

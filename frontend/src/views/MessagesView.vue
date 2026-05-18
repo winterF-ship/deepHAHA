@@ -171,15 +171,21 @@ function formatTime(t) {
 
 .message-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08);
+  box-shadow: 0 2px 12px rgba(91, 167, 255, 0.10);
   transform: translateY(-1px);
 }
 
 .msg-avatar {
   flex-shrink: 0;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA 62%, #C8FF3D);
   color: #fff;
   font-weight: 700;
+}
+.msg-avatar :deep(img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .msg-body {

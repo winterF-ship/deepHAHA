@@ -1,5 +1,5 @@
 <template>
-  <div class="post-detail" v-if="post">
+  <div class="post-detail" v-if="post" :class="{ 'reply-bar-open': replyExpanded }">
     <!-- 面包屑 -->
     <div class="breadcrumb">
       <router-link to="/">首页</router-link>
@@ -122,37 +122,41 @@
         <div class="empty-icon">💬</div>
         <p>暂无回复，来说两句吧</p>
       </div>
+      <div ref="bottomSentinelRef" class="bottom-sentinel"></div>
     </section>
 
-    <!-- 回复表单 -->
-    <div class="reply-form" v-if="store.isLoggedIn()">
-      <h4 class="form-title">写下你的回复</h4>
-      <div v-if="replyingTo" class="replying-indicator">
-        正在回复 @{{ replyingTo.authorName }}
-        <el-button size="small" text @click="replyingTo = null">取消</el-button>
-      </div>
-      <el-input
-        v-model="replyContent"
-        type="textarea"
-        :rows="4"
-        placeholder="写下你的回复…支持 Markdown 语法"
-      />
-      <div class="form-actions">
-        <el-button
-          type="primary"
-          @click="submitReply"
-          :loading="submitting"
-          class="reply-submit"
-        >
-          {{ submitting ? '提交中…' : '提交回复' }}
-        </el-button>
-      </div>
-    </div>
-    <div v-else class="login-prompt">
-      <div class="prompt-card">
-        <el-icon class="prompt-icon"><Lock /></el-icon>
-        <span>请先登录后再回复</span>
-        <router-link to="/login" class="prompt-link">去登录</router-link>
+    <!-- 底部固定回复条 -->
+    <div class="reply-bar" :class="{ expanded: replyExpanded }">
+      <template v-if="store.isLoggedIn()">
+        <div class="reply-bar-collapsed" @click="expandReply">
+          <span class="reply-bar-hint">
+            {{ replyingTo ? '回复 @' + replyingTo.authorName + '…' : '写回复…' }}
+          </span>
+          <el-icon class="reply-bar-icon-btn"><EditPen /></el-icon>
+        </div>
+        <div class="reply-bar-expanded">
+          <div v-if="replyingTo" class="reply-bar-replying">
+            <span>正在回复 @{{ replyingTo.authorName }}</span>
+            <el-button size="small" text @click="cancelReplyingTo">取消回复</el-button>
+          </div>
+          <el-input
+            ref="replyTextareaRef"
+            v-model="replyContent"
+            type="textarea"
+            :rows="4"
+            placeholder="写下你的回复…支持 Markdown 语法"
+          />
+          <div class="reply-bar-actions">
+            <el-button size="small" text @click="collapseReply" :disabled="submitting">收起</el-button>
+            <el-button type="primary" size="small" @click="submitReply" :loading="submitting">
+              {{ submitting ? '提交中…' : '提交回复' }}
+            </el-button>
+          </div>
+        </div>
+      </template>
+      <div v-else class="reply-bar-collapsed">
+        <span class="reply-bar-hint">请先登录后再回复</span>
+        <router-link to="/login" class="reply-bar-login-link">去登录</router-link>
       </div>
     </div>
 
@@ -161,9 +165,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Lock, Delete } from '@element-plus/icons-vue'
+import { Delete, EditPen } from '@element-plus/icons-vue'
 import { getPostDetail, createReply, deleteReply, toggleLike, toggleFavorite, deletePost } from '../api/post'
 import { getUsers } from '../api/auth'
 import { useUserStore } from '../stores/user'
@@ -180,11 +184,17 @@ const submitting = ref(false)
 const showUserCard = ref(false)
 const cardUser = ref(null)
 const replyingTo = ref(null)
+const replyExpanded = ref(false)
+const replyTextareaRef = ref(null)
+const bottomSentinelRef = ref(null)
 const newReplyIds = ref(new Set())
 const deletingReplyIds = ref(new Set())
 let knownReplyIds = new Set()
 let repliesReady = false
 let pollTimer = null
+let sentinelObserver = null
+let observerReady = false
+let userManuallyCollapsed = false
 
 async function loadPost() {
   const res = await getPostDetail(route.params.id)
@@ -208,6 +218,45 @@ onMounted(() => {
 })
 onUnmounted(() => {
   clearInterval(pollTimer)
+  if (sentinelObserver) {
+    sentinelObserver.disconnect()
+    sentinelObserver = null
+  }
+})
+
+function setupSentinelObserver() {
+  if (!bottomSentinelRef.value) return
+  if (sentinelObserver) sentinelObserver.disconnect()
+  sentinelObserver = new IntersectionObserver((entries) => {
+    const visible = entries[0].isIntersecting
+    const textarea = replyTextareaRef.value?.$el?.querySelector('textarea')
+    const focused = document.activeElement === textarea
+    if (visible && observerReady && !userManuallyCollapsed) {
+      // 滚到底部 → 展开（但不强制 focus）
+      if (!replyContent.value.trim() && !replyingTo.value && !focused) {
+        replyExpanded.value = true
+      }
+    } else if (visible) {
+      // 初始加载完成前或用户手动收起后不自动展开
+    } else {
+      // 离开底部 → 无内容、无目标、无 focus 时自动收起，并重置手动收起标记
+      userManuallyCollapsed = false
+      if (!replyContent.value.trim() && !replyingTo.value && !focused) {
+        replyExpanded.value = false
+      }
+    }
+  }, { threshold: 0 })
+  sentinelObserver.observe(bottomSentinelRef.value)
+}
+
+watch(post, (val) => {
+  if (val) {
+    nextTick(() => {
+      setupSentinelObserver()
+      // 延迟激活，避免短页面初始加载就自动展开
+      setTimeout(() => { observerReady = true }, 800)
+    })
+  }
 })
 
 function findReplyByUserId(userId) {
@@ -300,6 +349,11 @@ async function handleDeleteReply(reply) {
 
 function handleReplyTo(reply) {
   replyingTo.value = reply
+  replyExpanded.value = true
+  userManuallyCollapsed = false
+  nextTick(() => {
+    replyTextareaRef.value?.focus()
+  })
 }
 
 async function handleLike() {
@@ -325,10 +379,32 @@ async function submitReply() {
     ElMessage.success('回复成功')
     replyContent.value = ''
     replyingTo.value = null
+    replyExpanded.value = false
+    userManuallyCollapsed = false
     loadPost()
+  } catch {
+    // error handled by interceptor, keep content intact
   } finally {
     submitting.value = false
   }
+}
+
+function expandReply() {
+  replyExpanded.value = true
+  userManuallyCollapsed = false
+  nextTick(() => {
+    replyTextareaRef.value?.focus()
+  })
+}
+
+function collapseReply() {
+  if (replyContent.value.trim()) return
+  replyExpanded.value = false
+  userManuallyCollapsed = true
+}
+
+function cancelReplyingTo() {
+  replyingTo.value = null
 }
 
 function collectReplyIds(floors) {
@@ -347,8 +423,8 @@ function titleClass(role) {
 }
 
 function catColor(id) {
-  const colors = ['#6366f1', '#f59e0b', '#10b981', '#f43f5e']
-  const softs = ['rgba(99,102,241,0.09)', 'rgba(245,158,11,0.09)', 'rgba(16,185,129,0.09)', 'rgba(244,63,94,0.09)']
+  const colors = ['#5BA7FF', '#f59e0b', '#8fdc18', '#F56565']
+  const softs = ['#EEF6FF', 'rgba(245,158,11,0.09)', '#F4FFD8', 'rgba(245,101,101,0.10)']
   return { color: colors[(id - 1) % 4], soft: softs[(id - 1) % 4] }
 }
 
@@ -365,7 +441,12 @@ function formatTime(t) {
 </script>
 
 <style scoped>
-.post-detail { max-width: 760px; margin: 0 auto; }
+.post-detail {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-bottom: 92px;
+}
+.post-detail.reply-bar-open { padding-bottom: 220px; }
 
 /* Breadcrumb */
 .breadcrumb { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
@@ -376,43 +457,48 @@ function formatTime(t) {
 
 /* Content card */
 .content-card {
-  background: var(--bg-card); border-radius: var(--radius-lg);
-  padding: 28px 32px; border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-md);
+  background: var(--bg-card); border-radius: 14px;
+  padding: 22px 26px; border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
-.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .card-head-right { display: flex; align-items: center; gap: 10px; }
-.delete-btn { border-radius: 8px; font-size: 12px; }
+.delete-btn {
+  border-radius: 7px; font-size: 12px;
+  opacity: 0.72;
+}
+.delete-btn:hover { opacity: 1; }
 .author-row { display: flex; align-items: center; gap: 10px; }
 .author-avatar {
-  width: 38px; height: 38px; border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--primary);
   color: #fff; font-size: 15px; font-weight: 700;
-  display: grid; place-items: center; overflow: hidden;
+  display: grid; place-items: center; overflow: hidden; flex-shrink: 0;
 }
 .author-avatar img,
 .ra-avatar img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;
 }
 .author-name-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .author-name { font-size: 14px; font-weight: 650; color: var(--text); }
 .post-time { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 .tag {
-  font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 6px;
+  font-size: 11px; font-weight: 650; padding: 3px 9px; border-radius: 6px;
+  border: 1px solid rgba(91, 167, 255, 0.14);
 }
-.post-title { font-size: 24px; font-weight: 750; color: var(--text); margin-bottom: 16px; line-height: 1.35; letter-spacing: -0.3px; }
+.post-title { font-size: 23px; font-weight: 750; color: var(--text); margin-bottom: 12px; line-height: 1.36; letter-spacing: 0; }
 .post-body {
-  font-size: 15px; line-height: 1.85; color: var(--text);
+  font-size: 15px; line-height: 1.78; color: #243044;
   white-space: pre-wrap; word-break: break-word;
 }
-.card-foot { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+.card-foot { margin-top: 18px; padding-top: 12px; border-top: 1px solid #edf0f4; }
 .stat { font-size: 13px; color: var(--text-muted); }
 .stat-sep { margin: 0 8px; color: #c0c8d6; }
 .action-stat {
   cursor: pointer; user-select: none; transition: all var(--transition);
   display: inline-flex; align-items: center; gap: 4px;
 }
-.action-stat:hover { color: var(--text-secondary); transform: scale(1.04); }
+.action-stat:hover { color: var(--text); }
 .action-stat .stat-icon { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); display: inline-block; }
 .action-stat.liked { color: #ef4444; font-weight: 600; }
 .action-stat.liked:hover { color: #dc2626; }
@@ -434,50 +520,63 @@ function formatTime(t) {
 }
 
 /* Section */
-.section { margin-top: 32px; }
-.section-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 14px; }
+.section { margin-top: 22px; }
+.section-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
 
 /* Reply list */
-.reply-list { display: flex; flex-direction: column; gap: 8px; }
+.reply-list {
+  display: flex; flex-direction: column; gap: 0;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #e8edf3;
+  border-radius: 14px;
+  overflow: hidden;
+}
 .floor-group {
-  margin-bottom: 4px;
+  margin-bottom: 0;
   transition: opacity 220ms ease, transform 220ms ease, background-color 260ms ease;
 }
+.floor-group + .floor-group { border-top: 1px solid #eef2f7; }
 .reply-card {
-  background: var(--bg-card); border-radius: var(--radius); padding: 18px 22px;
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
+  background: rgba(255, 255, 255, 0.86); border-radius: 0; padding: 15px 18px;
+  border: none;
+  box-shadow: none;
   transition: border-color 200ms ease, box-shadow 200ms ease, background-color 260ms ease;
 }
-.reply-head-row { display: flex; align-items: center; gap: 10px; }
+.reply-head-row { display: flex; align-items: center; gap: 9px; }
 .floor-no {
-  font-size: 12px; color: var(--primary); font-weight: 700;
-  background: var(--primary-soft); padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; color: #9aa5b5; font-weight: 650;
+  background: #f6f8fb; padding: 2px 7px; border-radius: 999px;
   flex-shrink: 0;
 }
 .reply-head { display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer; }
-.reply-actions { display: flex; gap: 2px; flex-shrink: 0; }
-.reply-btn { font-size: 12px; padding: 2px 6px; }
+.reply-actions { display: flex; gap: 2px; flex-shrink: 0; opacity: 0.72; transition: opacity 160ms ease; }
+.reply-card:hover .reply-actions,
+.sub-reply-card:hover .reply-actions { opacity: 1; }
+.reply-btn { font-size: 12px; padding: 2px 7px; border-radius: 6px; color: var(--text-secondary); }
+.reply-btn:hover { background: #f3f5f8; color: var(--text); }
+.reply-btn.el-button--danger { color: #b45353; }
+.reply-btn.el-button--danger:hover { background: #fff1f2; color: #dc2626; }
 .reply-to-tag {
-  font-size: 12px; color: var(--primary); margin: 8px 0 4px;
-  font-weight: 500;
+  font-size: 12px; color: var(--primary-hover); margin: 7px 0 3px 40px;
+  font-weight: 550;
 }
 
 /* Sub replies */
 .sub-reply-list {
-  margin-left: 48px; padding: 4px 0;
-  border-left: 2px solid var(--border-light);
+  margin-left: 58px; margin-right: 18px; padding: 0 0 10px 12px;
+  border-left: 2px solid #e8edf3;
 }
 .sub-reply-card {
-  padding: 12px 16px; margin: 2px 0;
-  background: var(--bg-card); border-radius: var(--radius);
-  border: 1px solid var(--border-light);
+  padding: 10px 12px; margin: 4px 0;
+  background: #f8fafc; border-radius: 10px;
+  border: 1px solid #edf1f6;
   transition: opacity 220ms ease, transform 220ms ease, border-color 200ms ease, box-shadow 200ms ease, background-color 260ms ease;
 }
 .reply-card:hover,
 .sub-reply-card:hover {
-  border-color: rgba(99, 102, 241, 0.18);
-  box-shadow: var(--shadow-md);
+  background-color: #fbfcff;
+  border-color: #dde5ef;
+  box-shadow: none;
 }
 .reply-motion-enter-active,
 .reply-motion-leave-active {
@@ -496,12 +595,12 @@ function formatTime(t) {
 }
 
 @keyframes replyHighlight {
-  0% { background-color: rgba(99, 102, 241, 0.16); }
+  0% { background-color: rgba(91, 167, 255, 0.14); }
   100% { background-color: var(--bg-card); }
 }
 .ra-avatar {
-  width: 30px; height: 30px; border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--primary);
   color: #fff; font-size: 12px; font-weight: 700;
   display: grid; place-items: center; flex-shrink: 0; overflow: hidden;
 }
@@ -512,84 +611,230 @@ function formatTime(t) {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 6px;
 }
 .author-name-line .title-badge { margin-left: 0; }
-.title-admin { color: #be123c; background: #ffe4ec; border: 1px solid #fecdd3; }
-.title-supervisor { color: #5b21b6; background: #ede9fe; border: 1px solid #ddd6fe; }
+.title-admin { color: #9f1239; background: #fff1f2; border: 1px solid #fecdd3; }
+.title-supervisor { color: #6f8f00; background: #f4ffd8; border: 1px solid #ddf99a; }
 .ra-time { font-size: 12px; color: var(--text-muted); margin-left: 10px; }
-.reply-content { font-size: 14px; color: var(--text); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.reply-content { font-size: 14px; color: #273449; line-height: 1.68; white-space: pre-wrap; word-break: break-word; margin-top: 9px; }
 
 /* Empty replies */
 .empty-replies {
-  text-align: center; padding: 32px; background: var(--bg-card);
-  border-radius: var(--radius); border: 1px dashed var(--border);
+  text-align: center; padding: 28px; background: rgba(255, 255, 255, 0.72);
+  border-radius: 14px; border: 1px dashed #d8e0ea;
 }
 .empty-replies .empty-icon { font-size: 32px; margin-bottom: 8px; }
 .empty-replies p { font-size: 14px; color: var(--text-muted); }
 
-/* Reply form */
-.reply-form {
-  margin-top: 24px; background: var(--bg-card); border-radius: var(--radius-lg);
-  padding: 24px 28px; border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-md);
+/* Bottom sentinel (invisible trigger) */
+.bottom-sentinel {
+  height: 1px;
+  width: 100%;
 }
-.form-title { font-size: 15px; font-weight: 650; color: var(--text); margin-bottom: 12px; }
-.replying-indicator {
-  font-size: 13px; color: var(--primary); margin-bottom: 10px;
-  display: flex; align-items: center; gap: 8px;
-  background: var(--primary-soft); padding: 6px 12px; border-radius: 6px;
-}
-.reply-form :deep(.el-textarea__inner) {
-  border-radius: 10px; border: 1.5px solid var(--border);
-  font-size: 14px; line-height: 1.7; padding: 12px 16px;
-  transition: all var(--transition); font-family: inherit;
-}
-.reply-form :deep(.el-textarea__inner:focus) {
-  border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow);
-}
-.form-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
-.reply-submit {
-  border-radius: 10px; font-weight: 600; padding: 9px 24px;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #f43f5e) !important;
-  border: none !important; box-shadow: 0 2px 10px rgba(99,102,241,0.24);
-  transition: all var(--transition);
-}
-.reply-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(99,102,241,0.32); }
 
-/* Login prompt */
-.login-prompt { margin-top: 24px; }
-.prompt-card {
-  background: var(--primary-soft); border-radius: var(--radius);
-  padding: 16px 22px; display: flex; align-items: center; gap: 10px;
-  font-size: 14px; color: var(--text-secondary);
+/* Fixed bottom reply bar */
+.reply-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 999;
+  width: min(760px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(203, 213, 225, 0.92);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.10), 0 1px 2px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  max-height: 58px;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.35s ease,
+              border-color 0.35s ease;
+  padding: 0;
 }
-.prompt-icon { font-size: 18px; color: var(--primary); }
-.prompt-link { color: var(--primary); font-weight: 700; margin-left: auto; }
+
+.reply-bar.expanded {
+  max-height: 320px;
+  border-color: rgba(148, 163, 184, 0.86);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.13), 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.reply-bar-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  cursor: text;
+  border-radius: 16px;
+  padding: 7px 8px 7px 16px;
+  background: transparent;
+  border: none;
+  opacity: 1;
+  transition: opacity 0.2s ease, height 0.3s ease, background-color var(--transition);
+}
+.reply-bar.expanded .reply-bar-collapsed {
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.reply-bar-collapsed:hover {
+  background: rgba(248, 250, 252, 0.74);
+}
+
+.reply-bar-hint {
+  font-size: 14px;
+  color: #7b8798;
+  user-select: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-bar-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  color: var(--primary-hover);
+  background: var(--primary-soft);
+  border: 1px solid rgba(91, 167, 255, 0.18);
+  transition: background-color var(--transition), transform var(--transition);
+  flex-shrink: 0;
+}
+.reply-bar-collapsed:hover .reply-bar-icon-btn {
+  background: #ffe3f0;
+}
+.reply-bar-collapsed:active .reply-bar-icon-btn {
+  transform: scale(0.96);
+}
+
+.reply-bar-login-link {
+  font-size: 13px;
+  color: var(--primary-hover);
+  font-weight: 700;
+  flex-shrink: 0;
+  padding: 8px 13px;
+  border-radius: 9px;
+  background: var(--primary-soft);
+  border: 1px solid rgba(91, 167, 255, 0.18);
+}
+.reply-bar-login-link:hover { background: #ffe3f0; }
+
+/* Expanded */
+.reply-bar-expanded {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px 12px;
+  opacity: 0;
+  transition: opacity 0.25s ease 0.05s;
+}
+.reply-bar.expanded .reply-bar-expanded {
+  opacity: 1;
+  transition: opacity 0.25s ease 0.15s;
+}
+
+.reply-bar-replying {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--primary-hover);
+  background: transparent;
+  padding: 0 0 0 9px;
+  border-left: 3px solid rgba(91, 167, 255, 0.35);
+  border-radius: 0;
+  font-weight: 600;
+}
+.reply-bar-replying :deep(.el-button) {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.reply-bar :deep(.el-textarea__inner) {
+  min-height: 92px !important;
+  border-radius: 12px;
+  border: 1px solid #d7dee8;
+  color: #273449;
+  font-size: 14px;
+  line-height: 1.65;
+  padding: 10px 12px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  font-family: inherit;
+  resize: vertical;
+  box-shadow: none;
+}
+.reply-bar :deep(.el-textarea__inner:focus) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(91, 167, 255, 0.12);
+}
+
+.reply-bar-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+.reply-bar-actions :deep(.el-button) {
+  border-radius: 8px;
+  font-weight: 600;
+}
+.reply-bar-actions :deep(.el-button--primary) {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: none;
+}
+.reply-bar-actions :deep(.el-button--primary:hover) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+/* Post detail padding for fixed bar */
+.post-detail {
+  transition: padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
 @media (max-width: 768px) {
-  .content-card { padding: 20px 18px; border-radius: var(--radius); }
+  .content-card { padding: 18px 16px; border-radius: 12px; }
   .card-head { align-items: flex-start; gap: 12px; }
   .card-head-right { flex-direction: column-reverse; align-items: flex-end; gap: 8px; }
   .post-title { font-size: 20px; }
   .post-body { font-size: 14px; }
   .card-foot { display: flex; flex-wrap: wrap; gap: 8px; }
   .stat-sep { display: none; }
-  .reply-card { padding: 14px 16px; }
+  .reply-card { padding: 13px 14px; }
   .reply-head-row { align-items: flex-start; flex-wrap: wrap; }
   .reply-head { min-width: 0; }
   .reply-actions { width: 100%; justify-content: flex-end; }
-  .sub-reply-list { margin-left: 24px; }
+  .sub-reply-list { margin-left: 22px; margin-right: 10px; }
   .sub-reply-card { padding: 10px 12px; }
-  .reply-form { padding: 18px 16px; }
-  .prompt-card { align-items: flex-start; flex-wrap: wrap; }
-  .prompt-link { margin-left: 0; }
+  .reply-bar {
+    bottom: calc(var(--mobile-tabbar-height) + 10px + env(safe-area-inset-bottom));
+    width: calc(100vw - 20px);
+    border-radius: 14px;
+  }
+  .post-detail {
+    padding-bottom: 134px;
+  }
+  .post-detail.reply-bar-open {
+    padding-bottom: 268px;
+  }
 }
 
 @media (max-width: 520px) {
   .breadcrumb { flex-wrap: wrap; }
   .card-head { flex-direction: column; }
   .card-head-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
-  .author-avatar { width: 34px; height: 34px; border-radius: 9px; }
+  .author-avatar { width: 34px; height: 34px; border-radius: 50%; }
   .ra-time { display: block; margin-left: 0; margin-top: 2px; }
-  .sub-reply-list { margin-left: 12px; }
-  .replying-indicator { flex-wrap: wrap; }
+  .reply-list { border-radius: 12px; }
+  .sub-reply-list { margin-left: 12px; margin-right: 8px; }
+  .reply-bar-replying { flex-wrap: wrap; gap: 4px; }
+  .reply-bar-collapsed { height: 52px; }
 }
 </style>

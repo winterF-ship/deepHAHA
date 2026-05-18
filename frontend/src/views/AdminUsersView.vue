@@ -229,7 +229,7 @@ function formatDate(t) {
   transition: background-color 200ms ease;
 }
 .users-table :deep(.el-table__row:hover > td) {
-  background-color: rgba(99, 102, 241, 0.04) !important;
+  background-color: rgba(91, 167, 255, 0.06) !important;
 }
 .action-cell { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; }
 .action-cell :deep(.el-button + .el-button) { margin-left: 0; }
@@ -240,7 +240,7 @@ function formatDate(t) {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .title-admin { color: #be123c; background: #ffe4ec; border: 1px solid #fecdd3; }
-.title-supervisor { color: #5b21b6; background: #ede9fe; border: 1px solid #ddd6fe; }
+.title-supervisor { color: #6f8f00; background: #f4ffd8; border: 1px solid #ddf99a; }
 
 @media (max-width: 768px) {
   .admin-users {

@@ -21,6 +21,7 @@
         </router-link>
         <router-link to="/admin/bots" v-if="store.userInfo?.role === 'ADMIN' || store.userInfo?.role === 'SUPERVISOR'" class="nav-item" active-class="active">AI 角色</router-link>
         <router-link to="/admin/users" v-if="store.userInfo?.role === 'ADMIN'" class="nav-item" active-class="active">用户管理</router-link>
+        <router-link to="/admin/config" v-if="store.userInfo?.role === 'ADMIN'" class="nav-item" active-class="active">系统设置</router-link>
       </nav>
 
       <div class="user-area">
@@ -44,6 +45,7 @@
                 </el-dropdown-item>
                 <el-dropdown-item divided command="posts">我的帖子</el-dropdown-item>
                 <el-dropdown-item command="profile">个人信息</el-dropdown-item>
+                <el-dropdown-item v-if="store.userInfo?.role === 'ADMIN'" command="config">系统设置</el-dropdown-item>
                 <el-dropdown-item v-if="store.userInfo?.role === 'ADMIN'" command="users">用户管理</el-dropdown-item>
                 <el-dropdown-item v-if="store.userInfo?.role === 'ADMIN' || store.userInfo?.role === 'SUPERVISOR'" command="bots">AI 角色管理</el-dropdown-item>
                 <el-dropdown-item divided command="logout">
@@ -80,6 +82,8 @@ function handleCommand(cmd) {
     router.push('/profile?tab=info')
   } else if (cmd === 'posts') {
     router.push('/profile?tab=posts')
+  } else if (cmd === 'config') {
+    router.push('/admin/config')
   } else if (cmd === 'users') {
     router.push('/admin/users')
   } else if (cmd === 'bots') {
@@ -126,8 +130,8 @@ function formatDate(t) {
   position: relative;
   width: 42px; height: 42px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #eef2ff 0%, #ecfdf5 100%);
-  border: 1px solid rgba(99, 102, 241, 0.16);
+  background: linear-gradient(135deg, #eef6ff 0%, #f4ffd8 100%);
+  border: 1px solid rgba(91, 167, 255, 0.20);
   display: grid;
   place-items: center;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
@@ -139,12 +143,12 @@ function formatDate(t) {
 .bubble-main {
   width: 30px; height: 25px;
   border-radius: 11px 11px 11px 5px;
-  background: linear-gradient(135deg, #4f46e5, #0ea5e9 52%, #10b981);
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA 58%, #C8FF3D);
   color: #fff;
   font-weight: 850;
   font-size: 16px;
   line-height: 1;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.28);
+  box-shadow: 0 4px 10px rgba(91, 167, 255, 0.24);
 }
 .bubble-dot {
   position: absolute;
@@ -181,35 +185,35 @@ function formatDate(t) {
   font-size: 14px; color: var(--text-secondary);
   transition: all var(--transition); position: relative;
 }
-.nav-item:hover { color: var(--text); background: rgba(99, 102, 241, 0.06); }
+.nav-item:hover { color: var(--text); background: rgba(91, 167, 255, 0.08); }
 .nav-item.active { color: var(--primary); font-weight: 600; background: transparent; }
 .nav-item.active::after {
   content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
   width: 20px; height: 2.5px; border-radius: 2px;
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA);
 }
 .nav-post-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #eef2ff;
-  border: 1px solid rgba(99, 102, 241, 0.18);
-  color: #4f46e5 !important;
+  background: #eef6ff;
+  border: 1px solid rgba(91, 167, 255, 0.24);
+  color: #3B8BEA !important;
   margin-left: 6px;
   font-weight: 700;
   box-shadow: none;
 }
-.nav-post-btn:hover { background: #e0e7ff; color: #4338ca !important; }
+.nav-post-btn:hover { background: #dff0ff; color: #2577d8 !important; }
 .nav-item:active,
 .nav-post-btn:active {
   transform: scale(0.98);
 }
-.nav-post-btn.active { color: #4f46e5 !important; background: #e0e7ff; }
+.nav-post-btn.active { color: #3B8BEA !important; background: #dff0ff; }
 .post-icon {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #4f46e5;
+  background: var(--primary);
   color: #fff;
   font-size: 12px;
   display: inline-flex;
@@ -224,11 +228,18 @@ function formatDate(t) {
   cursor: pointer; padding: 5px 10px;
   border-radius: 10px; transition: all var(--transition);
 }
-.user-trigger:hover { background: rgba(99, 102, 241, 0.06); }
+.user-trigger:hover { background: rgba(91, 167, 255, 0.08); }
 .user-trigger:active { transform: scale(0.98); }
 .user-avatar {
-  background: linear-gradient(135deg, #6366f1, #f59e0b, #10b981);
+  background: linear-gradient(135deg, #5BA7FF, #3B8BEA 62%, #C8FF3D);
   color: #fff; font-weight: 700; font-size: 14px;
+  flex-shrink: 0;
+}
+.user-avatar :deep(img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 .username { color: var(--text); font-size: 14px; font-weight: 500; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .arrow-icon { color: var(--text-muted); font-size: 12px; transition: transform var(--transition); }
@@ -248,12 +259,12 @@ function formatDate(t) {
 }
 .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1, #7c3aed, #f43f5e);
+  background: var(--primary);
   border: none; color: #fff; font-weight: 600; border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.22);
+  box-shadow: 0 2px 6px rgba(91, 167, 255, 0.22);
   transition: all var(--transition);
 }
-.btn-primary:hover { box-shadow: 0 4px 14px rgba(99, 102, 241, 0.34); opacity: 0.94; }
+.btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 14px rgba(91, 167, 255, 0.28); opacity: 0.98; }
 
 /* Mobile */
 @media (max-width: 768px) {
